@@ -95,7 +95,9 @@ class Adaboost:
         clf_preds = [clf.alpha * clf.predict(X) for clf in self.lista_clasificadores] # Calcular las predicciones de cada clasificador débil para cada input multiplicadas por su alfa
         y_pred = np.sum(clf_preds, axis=0) # Sumar para cada input todas las predicciones ponderadas y decidir la clase en función del signo
         return np.sign(y_pred)
-        
+
+################################################################ Tarea 1B #########################################################################
+
 def entrenamiento(digit, T, A, verbose=False):
     # Cargar los datos de MNIST
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -122,23 +124,34 @@ def entrenamiento(digit, T, A, verbose=False):
     train_accuracy = accuracy_score(y_train_digit, y_train_pred)
     test_accuracy = accuracy_score(y_test_digit, y_test_pred)
 
+    # Imprimir las tasas de acierto
+    print(f"Entrenando clasificador Adaboost para el dígito {digit}, T={T}, A={A}")
+    if verbose:
+        for i, c in enumerate(clf.lista_clasificadores):
+            print(f"Añadido clasificador {i+1}: {c.caracteristica_index}, {c.umbral:.4f}, "f"{'+' if c.polaridad == 1 else '-'}, {c.alpha:.6f}")
+
+    print(f"Tasas acierto (train, test) y tiempo: {train_accuracy*100:.2f}%, {test_accuracy*100:.2f}%, {end_time - start_time:.3f} s")
+
     # Devolver precisión y tiempo
     return train_accuracy, test_accuracy, end_time - start_time
 
-def generarGraficaPlot(T_values, A_values, digit):
+################################################################ Tarea 1C #########################################################################
+
+
+def generarGraficasPlot(T_values, A_values, digit, train_accuracies, test_accuracies, training_times):
     
-    train_accuracies = []
-    test_accuracies = []
-    times = []
+    # train_accuracies = []
+    # test_accuracies = []
+    # times = []
     TA_products = [T * A for T in T_values for A in A_values]
 
-    # Prueba con diferentes valores de T y A y guarda los resultados
-    for T in T_values:
-        for A in A_values:
-            train_accuracy, test_accuracy, training_time = entrenamiento(digit, T, A, True)
-            train_accuracies.append(train_accuracy)
-            test_accuracies.append(test_accuracy)
-            times.append(training_time)
+    # # Prueba con diferentes valores de T y A y guarda los resultados
+    # for T in T_values:
+    #     for A in A_values:
+    #         train_accuracy, test_accuracy, training_time = entrenamiento(digit, T, A, True)
+    #         train_accuracies.append(train_accuracy)
+    #         test_accuracies.append(test_accuracy)
+    #         times.append(training_time)
 
     # Ahora, crea la gráfica de doble eje
     fig, ax1 = plt.subplots()
@@ -152,7 +165,7 @@ def generarGraficaPlot(T_values, A_values, digit):
 
     ax2 = ax1.twinx()
     ax2.set_ylabel('Time (seconds)', color='tab:blue')
-    ax2.plot(TA_products, times, 's-', color='tab:blue', label='Time to Train')
+    ax2.plot(TA_products, training_times, 's-', color='tab:blue', label='Time to Train')
     ax2.tick_params(axis='y', labelcolor='tab:blue')
     ax2.legend(loc='upper right')
 
@@ -164,9 +177,26 @@ def main():
     # Define los rangos de valores para T y A que deseas probar
     T_values = [5, 10, 20, 30]  # Ejemplo de valores para T
     A_values = [5, 10, 20, 30]  # Ejemplo de valores para A
+    
+    digits = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    
+    for digit in digits:
+        train_accuracies_matrix = []
+        test_accuracies_matrix = []
+        training_times_matrix = []
 
-    # Llama a la función para generar la gráfica
-    generarGraficaPlot(T_values, A_values, digit=9)
+        for T in T_values:
+            for A in A_values:
+                train_accuracy, test_accuracy, training_time = entrenamiento(digit, T, A)
+                train_accuracies_matrix.append(train_accuracy)
+                test_accuracies_matrix.append(test_accuracy)
+                training_times_matrix.append(training_time)
+
+        generarGraficasPlot(T_values, A_values, digit, train_accuracies_matrix, test_accuracies_matrix, training_times_matrix)
+
 
 if __name__ == "__main__":
     main()
+
+    
+    
