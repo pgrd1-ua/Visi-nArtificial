@@ -5,7 +5,6 @@ import time
 
 class DecisionStump:
     def __init__(self, n_caracteristicas):
-
         self.caracteristica_index = np.random.randint(0, n_caracteristicas) # Seleccionar una característica al azar. n_caracteristicas es el número total de características disponibles.
         self.umbral = None # Inicializar el umbral a None. Este será determinado durante el entrenamiento.
         self.polaridad = np.random.choice([1, -1]) # Polaridad puede ser 1 o -1, se elige al azar.
@@ -16,7 +15,7 @@ class DecisionStump:
         if self.polaridad == 1: # Dependiendo de la polaridad, ajustar las predicciones basadas en el umbral y la característica seleccionada.
             predicciones[X[:, self.caracteristica_index] < self.umbral] = -1  # Si la característica es menor que el umbral, la predicción es -1.
         else:
-            predicciones[X[:, self.caracteristica_index] > self.umbral] = -1 # Si la característica es mayor que el umbral, la predicción es -1.
+            predicciones[X[:, self.caracteristica_index] >= self.umbral] = 1 # Si la característica es mayor que el umbral, la predicción es -1.
         return predicciones
 
 class Adaboost:
@@ -37,14 +36,14 @@ class Adaboost:
         #w : array de pesos. Cada elemento de w representa el peso inicial de cada imagen en tu conjunto de datos.
 
         # Bucle de entrenamiento Adaboost # Bucle de entrenamiento Adaboost: desde 1 hasta T repetir
-        for t in range(self.T): ## Hasta T clasificadores
+        for t in range(1, self.T): ## Hasta T clasificadores
             # Iniciar el clasificador con el mayor error posible para asegurar que se actualice en el primer intento
             clf = DecisionStump(n_caracteristicas)
             min_error = float('inf')
 
             # Buscar el mejor clasificador débil: desde 1 hasta A repetir
             # Calcular predicciones de ese clasificador para todas las observaciones
-            for a in range(self.A):
+            for a in range(1, self.A):
                 # Generar un umbral y característica aleatorios para el clasificador
                 caracteristica_index = np.random.randint(0, n_caracteristicas) # Crear un nuevo clasificador débil aleatorio
                 umbral = np.random.uniform(np.min(X[:, caracteristica_index]), np.max(X[:, caracteristica_index])) 
@@ -53,9 +52,9 @@ class Adaboost:
                 clf.caracteristica_index = caracteristica_index
                 clf.umbral = umbral
                 clf.polaridad = polaridad
+
                 # Realizar predicciones con el clasificador débil actual
                 predicciones = clf.predict(X)
-
                 # Calcular el error ponderado de las predicciones
                 # comparar predicciones con los valores deseados 
                 # y acumular los pesos de las observaciones mal clasificadas
@@ -66,9 +65,17 @@ class Adaboost:
                 if error < min_error:
                     min_error = error
                     best_clf = clf
+                    # Actualiza el umbral y la polaridad del mejor clf
+                    best_clf.umbral = np.random.uniform(np.min(X[:, clf.caracteristica_index]), np.max(X[:, clf.caracteristica_index]))
+                    best_clf.polaridad = np.random.choice([1, -1])
+
+            # if min_error == 0:
+            #     min_error = 1e-10  # Para evitar división por cero en el cálculo de alpha
 
             # Calcular el valor de alfa y las predicciones del mejor clasificador débil
+            #best_clf.alpha = 0.5 * np.log((1 - min_error) / min_error)
             best_clf.alpha = 0.5 * np.log((1 - min_error) / (min_error + 1e-10))
+
 
             # Guardar el mejor clasificador en la lista de clasificadores de Adaboost
             self.lista_clasificadores.append(best_clf)
@@ -93,9 +100,9 @@ def train_adaboost_for_digit(digit, T, A, verbose=False):
     (X_train, y_train), (X_test, y_test) = mnist.load_data()
     
     # Preprocesar los datos - aplanar y normalizar
-    X_train = X_train.reshape((X_train.shape[0], -1)) / 255.
-    X_test = X_test.reshape((X_test.shape[0], -1)) / 255.
-    
+    X_train = X_train.reshape((X_train.shape[0], -1)) / 255.0
+    X_test = X_test.reshape((X_test.shape[0], -1)) / 255.0
+
     # Filtrar los datos para el dígito específico vs todos los demás
     y_train_digit = np.where(y_train == digit, 1, -1)
     y_test_digit = np.where(y_test == digit, 1, -1)
@@ -105,9 +112,13 @@ def train_adaboost_for_digit(digit, T, A, verbose=False):
     
     # Entrenar el clasificador y medir el tiempo de entrenamiento
     start_time = time.time()
+    print("X_train: ", X_train)
+    print("y_train_digit: ", y_train_digit)
     clf.fit(X_train, y_train_digit, verbose=verbose)
     end_time = time.time()
     
+    #score = model.evaluate(X_test, y_test, verbose = 0)
+
     # Calcular las tasas de acierto
     y_train_pred = clf.predict(X_train)
     y_test_pred = clf.predict(X_test)
@@ -117,9 +128,9 @@ def train_adaboost_for_digit(digit, T, A, verbose=False):
     # Imprimir las tasas de acierto
     print(f"Entrenando clasificador Adaboost para el dígito {digit}, T={T}, A={A}")
     if verbose:
-        for i, stump in enumerate(clf.lista_clasificadores):
-            print(f"Añadido clasificador {i+1}: {stump.caracteristica_index}, {stump.umbral:.4f}, "
-                f"{'+' if stump.polaridad == 1 else '-'}, {stump.alpha:.6f}")
+        for i, c in enumerate(clf.lista_clasificadores):
+            print(f"Añadido clasificador {i+1}: {c.caracteristica_index}, {c.umbral:.4f}, "f"{'+' if c.polaridad == 1 else '-'}, {c.alpha:.6f}")
+
     print(f"Tasas acierto (train, test) y tiempo: {train_accuracy*100:.2f}%, {test_accuracy*100:.2f}%, {end_time - start_time:.3f} s")
 
 
