@@ -9,6 +9,11 @@ from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, classification_report
 
+from keras.models import Sequential
+from keras.datasets import mnist
+from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
+from keras.optimizers import Adam
+
 
 class DecisionStump:
     def __init__(self, n_caracteristicas):
@@ -27,49 +32,6 @@ class DecisionStump:
             predicciones[feature_column >= self.umbral] = -1
         return predicciones
 
-
-# class Adaboost:
-#     def __init__(self, T=5, A=20):
-#         self.T = T
-#         self.A = A
-#         self.lista_clasificadores = []
-
-#     def fit(self, X, Y, verbose=False):
-#         n_samples, n_caracteristicas = X.shape
-#         D = np.full(n_samples, (1 / n_samples))
-
-#         for t in range(self.T):
-#             clf_best = None
-#             min_error = float('inf')
-
-#             for a in range(self.A):
-#                 clf = DecisionStump(n_caracteristicas)
-
-#                 predicciones = clf.predict(X)
-#                 error = np.sum(D[Y != predicciones])
-
-#                 if error < min_error:
-#                     min_error = error
-#                     clf_best = clf
-
-#             # Calculate alpha
-#             clf_best.alpha = 0.5 * np.log((1.0 - min_error) / (min_error + 1e-10))
-
-#             # Update weights
-#             D *= np.exp(-clf_best.alpha * Y * clf_best.predict(X))
-#             D /= np.sum(D)
-
-#             self.lista_clasificadores.append(clf_best)
-
-#             if verbose:
-#                 print(f'Ronda {t+1}, Caracteristica {clf_best.caracteristica_index}, '
-#                     f'Umbral {clf_best.umbral}, Polaridad {clf_best.polaridad}, '
-#                     f'Error {min_error}, Alpha {clf_best.alpha}')
-
-#     def predict(self, X):
-#         clf_preds = [clf.alpha * clf.predict(X) for clf in self.lista_clasificadores]
-#         y_pred = np.sum(clf_preds, axis=0)
-#         return np.sign(y_pred)
 class Adaboost:
     def __init__(self, T=5, A=20):
         self.T = T
@@ -172,52 +134,46 @@ def tarea1B(digito, T, A, verbose=False):
 ################################################################ Tarea 1C #########################################################################
 
 
-def tarea1C(digito, train_accuracies_aux, test_accuracies_aux, training_times_aux):
-    #Define los rangos de valores para T y A que deseas probar
+def tarea1D():
+    digitos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    fig, axs = plt.subplots(2, 5, figsize=(20, 8))
+    axs = axs.flatten()
+
+    for i, digito in enumerate(digitos):
+        tarea1C(i, digito, axs)
+
+    plt.tight_layout()
+    plt.show()
+
+def tarea1C(i, digito, axs):
     T_values = [10, 20, 30, 40]
     A_values = [5, 10, 20, 30]
 
-    #Tarea 1C recorre T y A y genera graficas
+    train_accuracies_aux = []
+    test_accuracies_aux = []
+    training_times_aux = []
+    
     for T, A in zip(T_values, A_values):
         train_accuracy, test_accuracy, training_time = tarea1B(digito, T, A)
         train_accuracies_aux.append(train_accuracy)
         test_accuracies_aux.append(test_accuracy)
         training_times_aux.append(training_time)
 
-    # Asegúrate de que TA_producto tenga la misma longitud que las otras listas
     TA_producto = [T * A for T, A in zip(T_values, A_values)]
-    
-    fig, ax1 = plt.subplots()
 
-    ax1.set_xlabel('T x A')
-    ax1.set_ylabel('Accuracy', color='tab:red')
-    ax1.plot(TA_producto, train_accuracies_aux, 'o-', color='tab:red', label='Train Accuracy')
-    ax1.plot(TA_producto, test_accuracies_aux, 'o-', color='tab:orange', label='Test Accuracy')
-    ax1.tick_params(axis='y', labelcolor='tab:red')
-    ax1.legend(loc='upper left')
+    # Aquí utilizamos los ejes proporcionados
+    ax = axs[i]
+    ax.set_title(f'Digito: {digito}')
+    ax.set_xlabel('T x A')
+    ax.set_ylabel('Accuracy', color='tab:red')
+    ax.plot(TA_producto, train_accuracies_aux, 'o-', color='tab:red', label='Train Accuracy')
+    ax.plot(TA_producto, test_accuracies_aux, 'o-', color='tab:orange', label='Test Accuracy')
+    ax.tick_params(axis='y', labelcolor='tab:red')
 
-    ax2 = ax1.twinx()
+    ax2 = ax.twinx()
     ax2.set_ylabel('Time (seconds)', color='tab:blue')
     ax2.plot(TA_producto, training_times_aux, 's-', color='tab:blue', label='Time to Train')
     ax2.tick_params(axis='y', labelcolor='tab:blue')
-    ax2.legend(loc='upper right')
-
-    fig.tight_layout()
-    plt.title('Accuracy and Training Time vs T x A')
-    plt.show()
-    plt.close()
-
-def tarea1D():
-    digitos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    
-    for digito in digitos: # Tarea 1D para cada dígito se entrena un clasificador Adaboost
-        train_accuracies_aux = []
-        test_accuracies_aux = []
-        training_times_aux = []
-        print("DIGITO: ", digito)
-
-        # Generar y mostrar gráficas después de procesar todos los valores de T y A para un dígito
-        tarea1C(digito, train_accuracies_aux, test_accuracies_aux, training_times_aux)
 
 
 def tarea2A():
@@ -237,26 +193,152 @@ def tarea2A():
     # Crear el clasificador AdaBoost
     ada_clf = AdaBoostClassifier(n_estimators=50, random_state=42)
 
+    start_time = time.time()
     # Entrenar el modelo
     ada_clf.fit(X_train, y_train)
-
+    end_time = time.time()
+    
     # Realizar predicciones
     y_pred = ada_clf.predict(X_test)
 
-    # Calcular la precisión
-    accuracy = accuracy_score(y_test, y_pred)
     # Resultados
     print(f'La precisión del modelo es del {round(accuracy_score(y_test, y_pred) * 100, 2)}%')
     print(f'El informe de clasificación es: \n {classification_report(y_test, y_pred)}')
+    print(f"Tiempo: {end_time - start_time:.3f} s")
 
 
 
+# def tarea2B():
+#     T_values = [10, 20, 40]
+#     A_values = [10, 20, 40]  # Solo para tu implementación
+
+#     # Diccionarios para almacenar los resultados
+#     resultados_mi_adaboost = {}
+#     resultados_sklearn_adaboost = {}
+
+#     # Entrenamos mi Adaboost
+#     tarea1D    
+
+def tarea2C():
+    print()
+    print("Tarea 2C")
+
+    # Cargar el conjunto de datos MNIST
+    mnist = fetch_openml('mnist_784', parser='auto')
+    X, y = mnist["data"], mnist["target"]
+
+    # Convertir las etiquetas a enteros
+    y = y.astype(int)
+
+    # Dividir los datos en conjuntos de entrenamiento y prueba
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Crear el clasificador de árbol de decisión
+    dt_clf = DecisionTreeClassifier(max_depth=1) # Puedes ajustar los parámetros aquí
+
+    # Crear el clasificador AdaBoost
+    ada_clf = AdaBoostClassifier(base_estimator=dt_clf, n_estimators=50, random_state=42)
+
+    start_time = time.time()
+    # Entrenar el modelo
+    ada_clf.fit(X_train, y_train)
+    end_time = time.time()
+    
+    # Realizar predicciones
+    y_pred = ada_clf.predict(X_test)
+
+    # Resultados
+    print(f'La precisión del modelo es del {round(accuracy_score(y_test, y_pred) * 100, 2)}%')
+    print(f'El informe de clasificación es: \n {classification_report(y_test, y_pred)}')
+    print(f"Tiempo: {end_time - start_time:.3f} s")
+    
+
+def tarea2D():
+
+    # Cargar el conjunto de datos MNIST
+    (X, y), (X_test, y_test) = mnist.load_data()
+
+    # Dividir los datos en conjuntos de entrenamiento y validación
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Normalizar los datos (si no se ha hecho previamente)
+    X_train = X_train / 255.0
+    X_test = X_test / 255.0
+
+    # Asegurarse de que los datos están en el formato correcto
+    X_train = X_train.reshape((-1, 784))
+    X_test = X_test.reshape((-1, 784))
+
+    # Crear el modelo MLP
+    model = Sequential()
+    model.add(Dense(256, input_shape=(784,), activation='relu'))  # Capa oculta
+    model.add(Dense(10, activation='softmax'))  # Capa de salida
+
+    # Compilar el modelo
+    model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    # Entrenar el modelo
+    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_split=0.2)
+
+    # Evaluar el modelo
+    test_loss, test_acc = model.evaluate(X_test, y_test)
+
+    print(f'Test Accuracy: {test_acc}')
+    print(f'Test Loss: {test_loss}')
+
+    # Opcional: Devolver el modelo y el historial para análisis posterior
+    return model, history
+
+def tarea2E():
+    # Cargar el conjunto de datos MNIST
+    (X, y), (X_test, y_test) = mnist.load_data()
+
+    # Normalizar y redimensionar los datos
+    X = X.reshape((-1, 28, 28, 1)).astype('float32') / 255
+    X_test = X_test.reshape((-1, 28, 28, 1)).astype('float32') / 255
+
+    # Dividir los datos en conjuntos de entrenamiento y validación
+    X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Construir el modelo CNN
+    model = Sequential([
+        Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=(28, 28, 1)),
+        MaxPooling2D(pool_size=(2, 2)),
+        Conv2D(64, (3, 3), activation='relu'),
+        MaxPooling2D(pool_size=(2, 2)),
+        Flatten(),
+        Dense(128, activation='relu'),
+        Dense(10, activation='softmax')
+    ])
+
+    # Compilar el modelo
+    model.compile(optimizer=Adam(), loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+
+    # Entrenar el modelo
+    history = model.fit(X_train, y_train, epochs=10, batch_size=32, validation_data=(X_val, y_val))
+
+    # Evaluar el modelo
+    test_loss, test_acc = model.evaluate(X_test, y_test)
+
+    print(f'Test Accuracy: {test_acc}')
+    print(f'Test Loss: {test_loss}')
+
+    # Opcional: Devolver el modelo y el historial para análisis posterior
+    return model, history
 
 def main():
-    
+    print()
+    print("########## Tarea 1B: entrnamiento báscio con el dígito 9 #########")
     train_accuracy, test_accuracy, training_time = tarea1B(9, 10, 20, True)
-
+    print()
+    print("########## Tarea 1D ##########")
+    tarea1D()
+    print()
+    print("########## Tarea 2A ##########")
     tarea2A()
+    print()
+    print("########## Tarea 2B ##########")
+
 
     
     
