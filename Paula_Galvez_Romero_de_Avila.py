@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.datasets import mnist
 import time
 
 from sklearn.ensemble import AdaBoostClassifier
@@ -17,7 +16,7 @@ from keras.optimizers import Adam
 
 class DecisionStump:
     def __init__(self, n_caracteristicas):
-        self.caracteristica_index = np.random.randint(0, n_caracteristicas) # Seleccionar una característica al azar. n_caracteristicas es el número total de características disponibles.
+        self.caracteristica = np.random.randint(0, n_caracteristicas) # Seleccionar una característica al azar. n_caracteristicas es el número total de características disponibles.
         self.umbral = np.random.uniform() # Inicializar el umbral.
         self.polaridad = np.random.choice([1, -1]) # Polaridad puede ser 1 o -1, se elige al azar.
         self.alpha = None # Valor de alpha (peso del clasificador), inicializado a None. Este será calculado durante el entrenamiento.
@@ -25,7 +24,7 @@ class DecisionStump:
     def predict(self, X):
         n_samples = X.shape[0]
         predicciones = np.ones(n_samples)
-        feature_column = X[:, self.caracteristica_index]
+        feature_column = X[:, self.caracteristica]
         if self.polaridad == 1:
             predicciones[feature_column < self.umbral] = -1
         else:
@@ -36,11 +35,13 @@ class Adaboost:
     def __init__(self, T=5, A=20):
         self.T = T
         self.A = A
+        self.lista_clasificadores = []
+        #Para la mejora
         self.umbral_mejora = 0.01
         self.incremento_A = 5
         self.min_iteraciones = 10
         self.early_stopping = True
-        self.lista_clasificadores = []
+        
 
     def fit(self, X, Y, mejora1E, verbose=False):
         n_samples, n_caracteristicas = X.shape
@@ -254,7 +255,6 @@ def tarea2C():
     
 
 def tarea2D():
-
     # Cargar el conjunto de datos MNIST
     (X, y), (X_test, y_test) = mnist.load_data()
 
@@ -325,6 +325,60 @@ def tarea2E():
 
     # Opcional: Devolver el modelo y el historial para análisis posterior
     return model, history
+
+def tarea2E():
+    # Model / data parameters
+    num_classes = 10
+    input_shape = (28, 28, 1)
+
+    # Load the data and split it between train and test sets
+    (x_train, y_train), (x_test, y_test) = mnist.load_data()
+
+    # Scale images to the [0, 1] range
+    x_train = x_train.astype("float32") / 255
+    x_test = x_test.astype("float32") / 255
+    # Make sure images have shape (28, 28, 1)
+    x_train = np.expand_dims(x_train, -1)
+    x_test = np.expand_dims(x_test, -1)
+    print("x_train shape:", x_train.shape)
+    print(x_train.shape[0], "train samples")
+    print(x_test.shape[0], "test samples")
+
+
+    # convert class vectors to binary class matrices
+    y_train = to_categorical(y_train, num_classes)
+    y_test = to_categorical(y_test, num_classes)
+    model = Sequential(
+        [
+            Input(shape=input_shape), # capa de entrada
+            layers.Conv2D(32, kernel_size=(3, 3), activation="relu"), # primera capa ocultas
+            layers.MaxPooling2D(pool_size=(2, 2)),
+            layers.Conv2D(64, kernel_size=(3, 3), activation="relu"),
+            layers.MaxPooling2D(pool_size=(2, 2)),
+            layers.Flatten(),
+            layers.Dropout(0.5),
+            layers.Dense(num_classes, activation="softmax"), # Cpa de salida una o varias dense numero de neuronas y funcion de activacion
+        ]
+    )
+
+    model.summary()
+
+    batch_size = 128
+    epochs = 15
+
+    model.compile(loss="categorical_crossentropy", optimizer="adam", metrics=["accuracy"])
+
+    model.fit(x_train, y_train, batch_size=batch_size, epochs=epochs, validation_split=0.1)
+    #DOCUMENTAR
+    # los errores no se calculan sin mas, se utilizan funciones
+    # mirar que es el optimizador de una red neuronal
+    # QUE ES VALLIATIONSTREEP O ALFO ASU
+    # TRASTEAR
+    # MULTIPLICAR POR DOS LAS NEURAS HE CONSEGUIDO ESTO.... TAL TAL TAL
+    score = model.evaluate(x_test, y_test, verbose=0)
+    print("Test loss:", score[0])
+    print("Test accuracy:", score[1])
+
 
 def main():
     print()
