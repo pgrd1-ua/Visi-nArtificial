@@ -139,7 +139,6 @@ def tarea1B(digito, T, A, verbose=False):
 
 
 def tarea1D(): # entrenar el adaboost multiclase
-    global X_train, y_train, X_test, y_test
 
     clasificadores = []
     digitos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
@@ -152,7 +151,9 @@ def tarea1D(): # entrenar el adaboost multiclase
 
     plt.tight_layout()
     plt.show()
-    return clasificadores
+
+    y_pred =  predecir_multiclase(X_test, clasificadores)
+    return y_pred
 
 def predecir_multiclase(X, clasificadores):
     # Inicializar la matriz de predicciones
@@ -165,6 +166,9 @@ def predecir_multiclase(X, clasificadores):
 
     # Elegir la clase con la mayor puntuación para cada muestra
     y_pred = np.argmax(predicciones_totales, axis=1)
+
+    accuracy = accuracy_score(y_test, y_pred) # Evaluar las predicciones con respecto a las etiquetas reales
+    print(f"Precisión del clasificador multiclase: {accuracy * 100:.2f}%")
     return y_pred
 
 
@@ -207,8 +211,6 @@ def tarea1C(i, digito, axs): # entrenamiento y gráficas
 
 
 def tarea2A(): # Clasificador de scikit-learn
-    print()
-    print("Tarea 2A")
 
     # Cargar el conjunto de datos MNIST
     mnist = fetch_openml('mnist_784', parser='auto')
@@ -236,18 +238,12 @@ def tarea2A(): # Clasificador de scikit-learn
     print(f'El informe de clasificación es: \n {classification_report(y_test, y_pred)}')
     print(f"Tiempo: {end_time - start_time:.3f} s")
 
+    return y_pred
 
 
-# def tarea2B():
-#     T_values = [10, 20, 40]
-#     A_values = [10, 20, 40]  # Solo para tu implementación
 
-#     # Diccionarios para almacenar los resultados
-#     resultados_mi_adaboost = {}
-#     resultados_sklearn_adaboost = {}
-
-#     # Entrenamos mi Adaboost
-#     tarea1D    
+def tarea2B(preds1D, preds2A):
+    print("Comparativa resultados entre el Adaboost Binario y el Adaboostclassifier")
 
 def tarea2C(): # Adaboostclassifier con el DecisioTree
     print()
@@ -281,6 +277,8 @@ def tarea2C(): # Adaboostclassifier con el DecisioTree
     print(f'La precisión del modelo es del {round(accuracy_score(y_test, y_pred) * 100, 2)}%')
     print(f'El informe de clasificación es: \n {classification_report(y_test, y_pred)}')
     print(f"Tiempo: {end_time - start_time:.3f} s")
+
+    return y_pred
     
 
 def tarea2D(): # MLP
@@ -414,19 +412,46 @@ def main():
     #print("########## Tarea 1B: entrenamiento básico con el dígito 9 ADABOOST BINARIO #########")
     #train_accuracy, test_accuracy, training_time = tarea1B(9, 10, 20, True)
 
+    # La 1E, ya va implementada
     # Si llamo a tarea 1D que es el adaboost multiclase, para cada digito llamará a la tarea 1C, donde se llamara a la tarea 1B y se entrenara cada digito
-    print("########## Tarea 1D : CLASIFICADOR MULTICLASE ##########")
-    clasificadores = tarea1D()
-    # Realizar predicciones multiclase con el conjunto de datos de prueba
-    y_pred = predecir_multiclase(X_test, clasificadores)
-    # Evaluar las predicciones con respecto a las etiquetas reales
-    accuracy = accuracy_score(y_test, y_pred)
-    print(f"Precisión del clasificador multiclase: {accuracy * 100:.2f}%")
+    print()
+    print("Tarea 1D : Clasificador multiclase")
+    y_pred1D = tarea1D()
 
-    # Opcional: Dividir X, y en conjuntos de entrenamiento y validación
+    print()
+    print("Tarea 2A: Adaboostclassifier de scikit-learn")
+    y_pred2A = tarea2A()
+    
+    print()
+    print("Tarea 2B: Comparando el adaboost classifier con el binario")
+    tarea2B(y_pred1D, y_pred2A)
+    
+    print()
+    print("Tarea 2C: Adaboostclassifier con DecisionTree")
+    y_pred2C = tarea2C()
+
+    print()
+    print("Volvemos a compararlo(Tarea2B) con el binario")
+    tarea2B(y_pred1D, y_pred2C)
+
+    print()
+    print("Tarea 2D: Perceptron multicapa (MLP)")
+    tarea2D()
+
+    print()
+    print("Tarea 2E: Red neuronal convuncional (CNN)")
+    tarea2E()
+
+    print()
+    print("Tarea 2F: COMPARANDO ADABOOST MULTICLASE - ADABOOSTCLASSIFIER DE SIKIT-LEARN - MLP - CNN")
+    #tarea2F()
+    print()
+
+
+    # Dividir X, y en conjuntos de entrenamiento y validación
     # X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    # La 1E, ya va implementada
+    
 
 if __name__ == "__main__":
     main()
