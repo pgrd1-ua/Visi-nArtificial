@@ -6,7 +6,7 @@ from sklearn.ensemble import AdaBoostClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.datasets import fetch_openml
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import accuracy_score, classification_report
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
 from sklearn.utils import shuffle
 from imblearn.over_sampling import SMOTE
 
@@ -15,6 +15,7 @@ from keras.models import Sequential
 from keras.datasets import mnist
 from keras.layers import Conv2D, MaxPooling2D, Flatten, Dense
 from keras.optimizers import Adam
+from keras.layers import Dropout
 
 # Cargar los datos de MNIST
 (X_train, y_train), (X_test, y_test) = mnist.load_data()
@@ -102,44 +103,28 @@ def tarea1E(clf, last_error, min_error, t):
     return clf, parar
 ################################################################ Tarea 1B #########################################################################
 def tarea1B(digito, T, A, verbose=False):
-    #global X_train, y_train, X_test, y_test
-    # Cargar los datos de MNIST
-    (X_train, y_train), (X_test, y_test) = mnist.load_data()
-
-    # Preprocesar los datos - aplanar y normalizar
-    X_train = X_train.reshape((X_train.shape[0], -1)) / 255.0
-    X_test = X_test.reshape((X_test.shape[0], -1)) / 255.0
+    global X_train, y_train, X_test, y_test
 
     # Filtrar los datos para el dígito específico vs todos los demás
     y_train_digito = np.where(y_train == digito, 1, -1)
     y_test_digito = np.where(y_test == digito, 1, -1)
 
     # Aplicar SMOTE para balancear las clases
-    # smote = SMOTE()
-    # X_train_balanced, y_train_balanced = smote.fit_resample(X_train, y_train_digito)
-    
-    #Equilibrar el conjunto de entrenamiento
-    # Supongamos que usamos submuestreo para la clase mayoritaria
-    clase_positiva = X_train[y_train_digito == 1]
-    clase_negativa = X_train[y_train_digito == -1]
-
-    # Submuestrear la clase negativa para igualar el número de muestras
-    clase_negativa_sub = clase_negativa[:clase_positiva.shape[0]]
-    X_train_eq = np.concatenate([clase_positiva, clase_negativa_sub])
-    y_train_eq = np.concatenate([np.ones(clase_positiva.shape[0]), -np.ones(clase_positiva.shape[0])])
+    smote = SMOTE()
+    X_train_sm, y_train_sm = smote.fit_resample(X_train, y_train_digito)
 
     # Iniciar el clasificador AdaBoost
     clf = Adaboost(T=T, A=A)
     
     # Entrenar el clasificador y medir el tiempo de entrenamiento
     start_time = time.time()
-    clf.fit(X_train_eq, y_train_eq, verbose=verbose)
+    clf.fit(X_train_sm, y_train_sm, verbose=verbose)
     end_time = time.time()
 
     # Calcular las tasas de acierto
-    y_train_pred = clf.predict(X_train_eq, binary_output=False) #ESTE PREDICT ES EL DE ADABOOST
+    y_train_pred = clf.predict(X_train_sm, binary_output=False) #ESTE PREDICT ES EL DE ADABOOST
     y_test_pred = clf.predict(X_test, binary_output=False)   # Y ESTE PREDICT TB ES EL DE ADABOOST
-    train_accuracy = accuracy_score(y_train_eq, y_train_pred)
+    train_accuracy = accuracy_score(y_train_sm, y_train_pred)
     test_accuracy = accuracy_score(y_test_digito, y_test_pred)
     
     # Imprimir las tasas de acierto
@@ -150,100 +135,57 @@ def tarea1B(digito, T, A, verbose=False):
 
     print(f"Tasas acierto (train, test) y tiempo: {train_accuracy*100:.2f}%, {test_accuracy*100:.2f}%, {end_time - start_time:.3f} s")
 
+    # Calcular la matriz de confusión para el conjunto de prueba
+    conf_matrix = confusion_matrix(y_test_digito, y_test_pred)
+    print("Matriz de Confusión:")
+    print(conf_matrix)
+
     return train_accuracy, test_accuracy, end_time - start_time, clf, y_test_pred
-
-# def tarea1B(digito, T, A, verbose=False):
-#     global X_train, y_train, X_test, y_test
-
-#     # Filtrar los datos para el dígito específico vs todos los demás
-#     y_train_digito = np.where(y_train == digito, 1, -1)
-#     y_test_digito = np.where(y_test == digito, 1, -1)
-
-#     # Equilibrar el conjunto de entrenamiento
-#     # # Supongamos que usamos submuestreo para la clase mayoritaria
-#     # clase_positiva = X_train[y_train_digito == 1]
-#     # clase_negativa = X_train[y_train_digito == -1]
-
-#     # # Submuestrear la clase negativa para igualar el número de muestras
-#     # clase_negativa_sub = clase_negativa[:clase_positiva.shape[0]]
-#     # X_train_eq = np.concatenate([clase_positiva, clase_negativa_sub])
-#     # y_train_eq = np.concatenate([np.ones(clase_positiva.shape[0]), -np.ones(clase_positiva.shape[0])])
-
-#     # # Asignar pesos para equilibrar el peso de los dígitos y los no-dígitos
-#     # n_digito = np.sum(y_train_eq == 1)
-#     # n_no_digito = np.sum(y_train_eq == -1)
-#     # total_muestras = n_digito + n_no_digito
-#     # peso_digito = (total_muestras / (2 * n_digito))
-#     # peso_no_digito = (total_muestras / (2 * n_no_digito))
-#     # pesos = np.where(y_train_eq == 1, peso_digito, peso_no_digito)
-
-#     # Iniciar el clasificador AdaBoost
-#     clf = Adaboost(T=T, A=A)
-#     # Entrenar el clasificador y medir el tiempo de entrenamiento
-#     start_time = time.time()
-#     clf.fit(X_train, y_train_digito, verbose=verbose)
-#     #clf.fit(X_train_eq, y_train_eq, sample_weight=pesos, verbose=verbose)
-#     end_time = time.time()
-
-#     # Resto del código para realizar predicciones y calcular la precisión
-#     y_train_pred = clf.predict(X_train, binary_output=False)
-#     y_test_pred = clf.predict(X_test, binary_output=False)
-#     train_accuracy = accuracy_score(y_train, y_train_pred)
-#     test_accuracy = accuracy_score(y_test_digito, y_test_pred)
-
-#     # Imprimir las tasas de acierto
-#     print(f"Entrenando clasificador Adaboost para el dígito {digito}, T={T}, A={A}")
-#     if verbose:
-#         for i, c in enumerate(clf.lista_clasificadores):
-#             print(f"Añadido clasificador {i+1}: {c.caracteristica}, {c.umbral:.4f}, "f"{'+' if c.polaridad == 1 else '-'}, {c.alpha:.6f}")
-
-#     print(f"Tasas acierto (train, test) y tiempo: {train_accuracy*100:.2f}%, {test_accuracy*100:.2f}%, {end_time - start_time:.3f} s")
-
-#     return train_accuracy, test_accuracy, end_time - start_time, clf
 
 ################################################################ Tarea 1C #########################################################################
 
 
-def tarea1D(): # entrenar el adaboost multiclase
+def tarea1D(T_values, A_values): # entrenar el adaboost multiclase
+    global y_test
+    
     clasificadores = []
     digitos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
     fig, axs = plt.subplots(2, 5, figsize=(20, 8))
     axs = axs.flatten()
 
     for i, digito in enumerate(digitos):
-        clf, y_testpred = tarea1C(i, digito, axs)
-        clasificadores.append((clf, y_testpred ))
+        clf = tarea1C(i, digito, axs, T_values, A_values)
+        clasificadores.append(clf)
 
     plt.tight_layout()
     plt.show()
 
-    y_pred =  predecir_multiclase(X_test, clasificadores)
-    return y_pred
+    predecir_multiclase(X_test, clasificadores)
+    return clf
 
 def predecir_multiclase(X, clasificadores):
+    global y_test
     # Inicializar la matriz de predicciones
     predicciones_totales = np.zeros((X.shape[0], len(clasificadores)))
-
     # Calcular las predicciones para cada clasificador
     for idx, clf in enumerate(clasificadores):
-        predicciones = clf[0].predict(X, binary_output=False)
-        #predicciones = clf[1]
-        predicciones_totales[:, idx] = predicciones
+        predicciones_binarias = clf.predict(X, binary_output=True)
+        predicciones_totales[:, idx] = predicciones_binarias
 
     # Elegir la clase con la mayor puntuación para cada muestra
     y_pred = np.argmax(predicciones_totales, axis=1)
+    # Calcular la matriz de confusión
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    print("Matriz de Confusión para el clasificador multiclase:")
+    print(conf_matrix)
 
     accuracy = accuracy_score(y_test, y_pred) # Evaluar las predicciones con respecto a las etiquetas reales
     print(f"Precisión del clasificador multiclase: {accuracy * 100:.2f}%")
-    return predicciones_totales
 
 
 
-def tarea1C(i, digito, axs): # entrenamiento y gráficas
+def tarea1C(i, digito, axs, T_values, A_values): # entrenamiento y gráficas
     #global X_train, y_train, X_test, y_test
-
-    T_values = [10, 20, 30, 40]
-    A_values = [5, 10, 20, 30]
     #clasificadores = []
 
     train_accuracies_aux = []
@@ -298,11 +240,15 @@ def tarea2A(n): # Clasificador de scikit-learn
     # Dividir los datos en conjuntos de entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
+    # Normalizar los valores de los píxeles
+    X_train = X_train / 255.0
+    X_test = X_test / 255.0
+
     # Crear el clasificador AdaBoost
     #ada_clf = AdaBoostClassifier(n_estimators=n, random_state=42)
     ada_clf = AdaBoostClassifier(
         n_estimators=n, 
-        learning_rate=1.0, # Puedes ajustar esto según sea necesario
+        learning_rate=1.0, #
         algorithm='SAMME.R', # Usa SAMME.R que suele ser más eficaz
         random_state=42
     )
@@ -326,7 +272,11 @@ def tarea2A(n): # Clasificador de scikit-learn
 
 def tarea2B(y_preds1D, y_preds2A):
     print("Comparativa resultados entre el Adaboost Binario y el Adaboostclassifier")
-    T_values = [10, 20, 30, 40]
+    T_values = [10, 50, 100, 1000]
+    n_estimators = [10, 50, 100, 1000]
+
+    A_values = [20, 40, 30, 5]
+    tarea1D(T_values, A_values)
     # Asumimos que y_preds_mi_adaboost y y_preds_sklearn son listas de y_pred para cada T
     aciertos_mi_adaboost = [accuracy_score(y_test, y_pred) for y_pred in y_preds1D]
     aciertos_sklearn = [accuracy_score(y_test, y_pred) for y_pred in y_preds2A]
@@ -345,7 +295,7 @@ def tarea2B(y_preds1D, y_preds2A):
 
     tarea1D()
 
-def tarea2C(): # Adaboostclassifier con el DecisioTree
+def tarea2C(): # Adaboostclassifier con el DecisionTree
 
     # Cargar el conjunto de datos MNIST
     mnist = fetch_openml('mnist_784', parser='auto')
@@ -356,6 +306,10 @@ def tarea2C(): # Adaboostclassifier con el DecisioTree
 
     # Dividir los datos en conjuntos de entrenamiento y prueba
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Normalizar los valores de los píxeles
+    X_train = X_train / 255.0
+    X_test = X_test / 255.0
 
     # Crear el clasificador de árbol de decisión
     # dt_clf = DecisionTreeClassifier(max_depth=1)
@@ -371,7 +325,7 @@ def tarea2C(): # Adaboostclassifier con el DecisioTree
     #ada_clf = AdaBoostClassifier(estimator=dt_clf, n_estimators=50, random_state=42)
     ada_clf = AdaBoostClassifier(
         estimator = dt_clf,
-        n_estimators=50, 
+        n_estimators=100, 
         learning_rate=1.0, # Puedes ajustar esto según sea necesario
         algorithm='SAMME.R', # Usa SAMME.R que suele ser más eficaz
         random_state=42
@@ -411,6 +365,7 @@ def tarea2D(): # MLP
     # Crear el modelo MLP
     model = Sequential()
     model.add(Dense(256, input_shape=(784,), activation='relu'))  # Capa oculta
+    model.add(Dropout(0.5))  # Añade un 50% de Dropout
     model.add(Dense(10, activation='softmax'))  # Capa de salida
 
     # Compilar el modelo
@@ -425,8 +380,8 @@ def tarea2D(): # MLP
     print(f'Test Accuracy: {test_acc}')
     print(f'Test Loss: {test_loss}')
 
-    # Opcional: Devolver el modelo y el historial para análisis posterior
-    return model, history
+    # # Opcional: Devolver el modelo y el historial para análisis posterior
+    # return model, history
 
 def tarea2E(): # CNN
     # Cargar el conjunto de datos MNIST
@@ -462,8 +417,8 @@ def tarea2E(): # CNN
     print(f'Test Accuracy: {test_acc}')
     print(f'Test Loss: {test_loss}')
 
-    # Opcional: Devolver el modelo y el historial para análisis posterior
-    return model, history
+    # # Opcional: Devolver el modelo y el historial para análisis posterior
+    # return model, history
 
 
 def main():
@@ -475,7 +430,9 @@ def main():
     # Si llamo a tarea 1D que es el adaboost multiclase, para cada digito llamará a la tarea 1C, donde se llamara a la tarea 1B y se entrenara cada digito
     print()
     print("Tarea 1D : Clasificador multiclase")
-    predicts1D = tarea1D()
+    T_values = [10, 20, 30, 40]
+    A_values = [20, 5, 20, 30]
+    predicts1D = tarea1D(T_values, A_values)
 
     print()
     print("Tarea 2A: Adaboostclassifier de scikit-learn")
@@ -485,15 +442,15 @@ def main():
     #     y_pred2A = tarea2A(t)
     #     predicts2A.append(accuracy_score(y_test, y_pred2A))
     
-    #y_pred2A = tarea2A(50)
+    y_pred2A = tarea2A(100)
 
     print()
     print("Tarea 2B: Comparando el adaboost classifier con el binario")
-    #tarea2B(predicts1D, predicts2A)
+    tarea2B()
     
     print()
     print("Tarea 2C: Adaboostclassifier con DecisionTree")
-    #y_pred2C = tarea2C()
+    y_pred2C = tarea2C()
 
     print()
     print("Volvemos a compararlo(Tarea2B) con el binario")
@@ -501,11 +458,11 @@ def main():
 
     print()
     print("Tarea 2D: Perceptron multicapa (MLP)")
-    #tarea2D()
+    tarea2D()
 
     print()
     print("Tarea 2E: Red neuronal convuncional (CNN)")
-    #tarea2E()
+    tarea2E()
 
     print()
     print("Tarea 2F: COMPARANDO ADABOOST MULTICLASE - ADABOOSTCLASSIFIER DE SIKIT-LEARN - MLP - CNN")
