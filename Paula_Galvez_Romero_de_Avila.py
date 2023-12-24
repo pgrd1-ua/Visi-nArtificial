@@ -51,8 +51,6 @@ class Adaboost:
     def fit(self, X, Y, verbose=False):
         n_samples, n_caracteristicas = X.shape
         D = np.full(n_samples, (1 / n_samples))
-        #D = sample_weight.copy()  # Inicializar con los pesos de las muestras
-        #clfmejorado = Adaboost(T=self.T, A=self.A)
 
         #last_error = float('inf')
         for t in range(self.T):
@@ -102,7 +100,7 @@ def tarea1E(clf, last_error, min_error, t):
 
     return clf, parar
 ################################################################ Tarea 1B #########################################################################
-def tarea1B(digito, T, A, verbose=False):
+def tarea_1A_y_1B(digito, T, A, aux, verbose=False):
     global X_train, y_train, X_test, y_test
 
     # Filtrar los datos para el dígito específico vs todos los demás
@@ -140,36 +138,31 @@ def tarea1B(digito, T, A, verbose=False):
     print("Matriz de Confusión:")
     print(conf_matrix)
 
-    return train_accuracy, test_accuracy, end_time - start_time, clf, y_test_pred
+    if aux:
+        return train_accuracy, test_accuracy, end_time - start_time
+    else:
+        return clf, y_test_pred
 
 ################################################################ Tarea 1C #########################################################################
 
 
-def tarea1D(T_values, A_values): # entrenar el adaboost multiclase
-    global y_test
-    
+def tarea1D(T, A): # entrenar el adaboost multiclase
+    print()
+    print(f"Adaboost Multiclase T = {T}, A = {A}")
     clasificadores = []
+    predicciones = []
     digitos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
-    fig, axs = plt.subplots(2, 5, figsize=(20, 8))
-    axs = axs.flatten()
 
     for i, digito in enumerate(digitos):
-        clf = tarea1C(i, digito, axs, T_values, A_values)
+        clf, pred = tarea_1A_y_1B(digito, T, A, medidas=False)
         clasificadores.append(clf)
+        predicciones.append(pred)
 
-    plt.tight_layout()
-    plt.show()
-
-    predecir_multiclase(X_test, clasificadores)
-    return clf
-
-def predecir_multiclase(X, clasificadores):
-    global y_test
     # Inicializar la matriz de predicciones
-    predicciones_totales = np.zeros((X.shape[0], len(clasificadores)))
+    predicciones_totales = np.zeros((X_test.shape[0], len(clasificadores)))
     # Calcular las predicciones para cada clasificador
     for idx, clf in enumerate(clasificadores):
-        predicciones_binarias = clf.predict(X, binary_output=True)
+        predicciones_binarias = clf.predict(X_test, binary_output=True)
         predicciones_totales[:, idx] = predicciones_binarias
 
     # Elegir la clase con la mayor puntuación para cada muestra
@@ -178,57 +171,71 @@ def predecir_multiclase(X, clasificadores):
     conf_matrix = confusion_matrix(y_test, y_pred)
     print("Matriz de Confusión para el clasificador multiclase:")
     print(conf_matrix)
+    print()
 
     accuracy = accuracy_score(y_test, y_pred) # Evaluar las predicciones con respecto a las etiquetas reales
     print(f"Precisión del clasificador multiclase: {accuracy * 100:.2f}%")
+    #precision = predecir_multiclase(X_test, clasificadores)
+    return (accuracy * 100)
 
-
-
-def tarea1C(i, digito, axs, T_values, A_values): # entrenamiento y gráficas
-    #global X_train, y_train, X_test, y_test
-    #clasificadores = []
-
-    train_accuracies_aux = []
-    test_accuracies_aux = []
-    training_times_aux = []
+# def predecir_multiclase(X, clasificadores):
+#     global y_test
     
-    for T, A in zip(T_values, A_values):
-        train_accuracy, test_accuracy, training_time, clf, y_testpred = tarea1B(digito, T, A)
-        train_accuracies_aux.append(train_accuracy)
-        test_accuracies_aux.append(test_accuracy)
-        training_times_aux.append(training_time)
-        #clasificadores.append(clf)
+#     return (accuracy * 100)
 
-    print()
-    mediatrain = np.mean(train_accuracies_aux)
-    mediatest = np.mean(test_accuracies_aux)
-    mediatimes = np.mean(training_times_aux)
-    print(f"Para el digito {digito}")
-    print(f"El modelo tiene una precision de entramiento {mediatrain}")
-    print(f"El modelo tiene una precision de test {mediatest}")
-    print(f"En el tiempo medio de {mediatimes}")
-    print()
 
-    TA_producto = [T * A for T, A in zip(T_values, A_values)]
 
-    # Aquí utilizamos los ejes proporcionados
-    ax = axs[i]
-    ax.set_title(f'Digito: {digito}')
-    ax.set_xlabel('T x A')
-    ax.set_ylabel('Accuracy', color='tab:red')
-    ax.plot(TA_producto, train_accuracies_aux, 'o-', color='tab:red', label='Train Accuracy')
-    ax.plot(TA_producto, test_accuracies_aux, 'o-', color='tab:orange', label='Test Accuracy')
-    ax.tick_params(axis='y', labelcolor='tab:red')
+def tarea1C(): # entrenamiento y gráficas
+    T_values = [10, 20, 30, 40]
+    A_values = [5, 10, 20, 30]
+    digitos = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    fig, axs = plt.subplots(2, 5, figsize=(20, 8))
+    axs = axs.flatten()
 
-    ax2 = ax.twinx()
-    ax2.set_ylabel('Time (seconds)', color='tab:blue')
-    ax2.plot(TA_producto, training_times_aux, 's-', color='tab:blue', label='Time to Train')
-    ax2.tick_params(axis='y', labelcolor='tab:blue')
+    for i, digito in enumerate(digitos):
+        train_accuracies_aux = []
+        test_accuracies_aux = []
+        training_times_aux = []
+        
+        for T, A in zip(T_values, A_values):
+            train_accuracy, test_accuracy, training_time = tarea_1A_y_1B(digito, T, A, aux=True)
+            train_accuracies_aux.append(train_accuracy)
+            test_accuracies_aux.append(test_accuracy)
+            training_times_aux.append(training_time)
 
-    return clf, y_testpred
+        print()
+        mediatrain = np.mean(train_accuracies_aux)
+        mediatest = np.mean(test_accuracies_aux)
+        mediatimes = np.mean(training_times_aux)
+        print(f"Para el digito {digito}")
+        print(f"El modelo tiene una precision de entrenamiento de media{mediatrain}")
+        print(f"El modelo tiene una precision de test de media {mediatest}")
+        print(f"En el tiempo medio de {mediatimes}")
+        print()
+
+        TA_producto = [T * A for T, A in zip(T_values, A_values)]
+
+        # Aquí utilizamos los ejes proporcionados
+        ax = axs[i]
+        ax.set_title(f'Digito: {digito}')
+        ax.set_xlabel('T x A')
+        ax.set_ylabel('Accuracy', color='tab:red')
+        ax.plot(TA_producto, train_accuracies_aux, 'o-', color='tab:red', label='Train Accuracy')
+        ax.plot(TA_producto, test_accuracies_aux, 'o-', color='tab:orange', label='Test Accuracy')
+        ax.tick_params(axis='y', labelcolor='tab:red')
+
+        ax2 = ax.twinx()
+        ax2.set_ylabel('Time (seconds)', color='tab:blue')
+        ax2.plot(TA_producto, training_times_aux, 's-', color='tab:blue', label='Time to Train')
+        ax2.tick_params(axis='y', labelcolor='tab:blue')
+
+    plt.tight_layout()
+    plt.show()
 
 
 def tarea2A(n): # Clasificador de scikit-learn
+    print()
+    print(f"Adaboostclassifier con n_estimators = {n}")
 
     # Cargar el conjunto de datos MNIST
     mnist = fetch_openml('mnist_784', parser='auto')
@@ -261,41 +268,42 @@ def tarea2A(n): # Clasificador de scikit-learn
     # Realizar predicciones
     y_pred = ada_clf.predict(X_test)
 
+    # Calcular la matriz de confusión
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    print("Matriz de Confusión para el clasificador multiclase:")
+    print(conf_matrix)
+    print()
+
     # Resultados
     print(f'La precisión del modelo es del {round(accuracy_score(y_test, y_pred) * 100, 2)}%')
     print(f'El informe de clasificación es: \n {classification_report(y_test, y_pred)}')
     print(f"Tiempo: {end_time - start_time:.3f} s")
 
-    return y_pred
+    return (accuracy_score(y_test, y_pred) * 100)
 
 
 
-def tarea2B(y_preds1D, y_preds2A):
-    print("Comparativa resultados entre el Adaboost Binario y el Adaboostclassifier")
-    T_values = [10, 50, 100, 1000]
-    n_estimators = [10, 50, 100, 1000]
+def tarea2B():
+    T_values = [10, 20, 40]
+    A_value = [10, 20, 40]  # Asumiendo que A es constante para tu Adaboost multiclase
 
-    A_values = [20, 40, 30, 5]
-    tarea1D(T_values, A_values)
-    # Asumimos que y_preds_mi_adaboost y y_preds_sklearn son listas de y_pred para cada T
-    aciertos_mi_adaboost = [accuracy_score(y_test, y_pred) for y_pred in y_preds1D]
-    aciertos_sklearn = [accuracy_score(y_test, y_pred) for y_pred in y_preds2A]
-    
-    plt.figure(figsize=(10, 6))
-    plt.plot(T_values, aciertos_mi_adaboost, marker='o', linestyle='-', color='blue', label='Mi Adaboost')
-    plt.plot(T_values, aciertos_sklearn, marker='x', linestyle='--', color='red', label='AdaboostClassifier Scikit-learn')
-    
-    plt.title('Comparación de Aciertos entre Mi Adaboost y AdaboostClassifier')
-    plt.xlabel('T (Número de Iteraciones)')
-    plt.ylabel('Porcentaje de Acierto')
-    plt.xticks(T_values)
+    precisiones1D = [tarea1D(T, A) for T, A in zip(T_values,A_value)]
+    precisiones2A = [tarea2A(T) for T in T_values]
+    precisiones2C = [tarea2C(T, A) for T, A in zip(T_values,A_value)]
+
+    plt.figure()
+    plt.plot(T_values, precisiones1D, label='Adaboost Multiclase')
+    plt.plot(T_values, precisiones2A, label='AdaboostClassifier de sklearn')
+    plt.plot(T_values, precisiones2C, label='AdaboostClassifier con Arboles de decision')
+    plt.xlabel('Valor de T')
+    plt.ylabel('Precisión')
+    plt.title('Comparativa de Precisión entre Adaboost Multiclase y AdaboostClassifier de sklearn Sin/Con DecisionTree')
     plt.legend()
-    plt.grid(True)
     plt.show()
 
-    tarea1D()
-
-def tarea2C(): # Adaboostclassifier con el DecisionTree
+def tarea2C(n, A): # Adaboostclassifier con el DecisionTree
+    print()
+    print(f"Adaboostclassifier ajustando DecisionTree con n_estimators = {n} y n_features = {A}")
 
     # Cargar el conjunto de datos MNIST
     mnist = fetch_openml('mnist_784', parser='auto')
@@ -316,6 +324,7 @@ def tarea2C(): # Adaboostclassifier con el DecisionTree
     dt_clf = DecisionTreeClassifier(
         criterion='gini', # Uso de entropía para una mejor división
         max_depth=5,        # Profundidad máxima
+        max_features=A,
         min_samples_split=2, # Mínimo de muestras para dividir
         min_samples_leaf=1,  # Mínimo de muestras en nodo hoja
         random_state=42
@@ -325,7 +334,7 @@ def tarea2C(): # Adaboostclassifier con el DecisionTree
     #ada_clf = AdaBoostClassifier(estimator=dt_clf, n_estimators=50, random_state=42)
     ada_clf = AdaBoostClassifier(
         estimator = dt_clf,
-        n_estimators=100, 
+        n_estimators=n, 
         learning_rate=1.0, # Puedes ajustar esto según sea necesario
         algorithm='SAMME.R', # Usa SAMME.R que suele ser más eficaz
         random_state=42
@@ -339,12 +348,18 @@ def tarea2C(): # Adaboostclassifier con el DecisionTree
     # Realizar predicciones
     y_pred = ada_clf.predict(X_test)
 
+    # Calcular la matriz de confusión
+    conf_matrix = confusion_matrix(y_test, y_pred)
+    print("Matriz de Confusión para el clasificador multiclase:")
+    print(conf_matrix)
+    print()
+
     # Resultados
     print(f'La precisión del modelo es del {round(accuracy_score(y_test, y_pred) * 100, 2)}%')
     print(f'El informe de clasificación es: \n {classification_report(y_test, y_pred)}')
     print(f"Tiempo: {end_time - start_time:.3f} s")
 
-    return y_pred
+    return (accuracy_score(y_test, y_pred) * 100)
     
 
 def tarea2D(): # MLP
@@ -429,40 +444,32 @@ def main():
     # La 1E, ya va implementada
     # Si llamo a tarea 1D que es el adaboost multiclase, para cada digito llamará a la tarea 1C, donde se llamara a la tarea 1B y se entrenara cada digito
     print()
-    print("Tarea 1D : Clasificador multiclase")
-    T_values = [10, 20, 30, 40]
-    A_values = [20, 5, 20, 30]
-    predicts1D = tarea1D(T_values, A_values)
-
-    print()
-    print("Tarea 2A: Adaboostclassifier de scikit-learn")
-    # T_values = [10, 20, 30, 40]
-    # predicts2A = []
-    # for t in T_values:
-    #     y_pred2A = tarea2A(t)
-    #     predicts2A.append(accuracy_score(y_test, y_pred2A))
+    print("Tarea 1C : Gráficas de investigación sobre entrenar para varios T y A")
+    tarea1C()
     
-    y_pred2A = tarea2A(100)
+    #print()
+    #print("Tarea 1D : Clasificador multiclase")
+    #tarea1D(T=100, A=5)
+
+    #print()
+    #print("Tarea 2A: Adaboostclassifier de scikit-learn")
+    #tarea2A(100)
+
+    #print()
+    #print("Tarea 2C: Adaboostclassifier con DecisionTree")
+    #tarea2C()
 
     print()
-    print("Tarea 2B: Comparando el adaboost classifier con el binario")
-    tarea2B()
-    
-    print()
-    print("Tarea 2C: Adaboostclassifier con DecisionTree")
-    y_pred2C = tarea2C()
-
-    print()
-    print("Volvemos a compararlo(Tarea2B) con el binario")
-    #tarea2B(predicts1D, y_pred2C)
+    print("Tarea 2B: Comparando el adaboost multiclase con los dos adaboost classifier implementado o no el DecisionTree")
+    #tarea2B()
 
     print()
     print("Tarea 2D: Perceptron multicapa (MLP)")
-    tarea2D()
+    #tarea2D()
 
     print()
     print("Tarea 2E: Red neuronal convuncional (CNN)")
-    tarea2E()
+    #tarea2E()
 
     print()
     print("Tarea 2F: COMPARANDO ADABOOST MULTICLASE - ADABOOSTCLASSIFIER DE SIKIT-LEARN - MLP - CNN")
